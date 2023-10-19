@@ -21,7 +21,7 @@ def prepare(
     checkpoint_dir: Path = Path("checkpoints/stabilityai/stablelm-base-alpha-3b"),
     test_split_fraction: float = 0.1,
     seed: int = 42,
-    mask_inputs: bool = False,
+    mask_inputs: bool = True,
     data_file_name: str = "dolly_data_cleaned.json",
     data_file_url: str = "https://huggingface.co/datasets/databricks/databricks-dolly-15k/resolve/main/databricks-dolly-15k.jsonl",
     ignore_index: int = -1,
