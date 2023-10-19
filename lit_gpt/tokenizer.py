@@ -24,6 +24,8 @@ class Tokenizer:
             from tokenizers import Tokenizer as HFTokenizer
 
             self.processor = HFTokenizer.from_file(str(vocabulary_path))
+            print("Adding special tokens...")
+            self.processor.add_special_tokens(["<|system|>", "<|user|>", "<|assistant|>"])
             self.backend = "huggingface"
 
             if (special_tokens_path := checkpoint_dir / "tokenizer_config.json").is_file():
@@ -98,6 +100,6 @@ class Tokenizer:
             tokens = tokens[:max_length]
         return torch.tensor(tokens, dtype=torch.int, device=device)
 
-    def decode(self, tensor: torch.Tensor) -> str:
+    def decode(self, tensor: torch.Tensor, **kwargs) -> str:
         tokens = [tensor.item()] if tensor.ndim == 0 else tensor.tolist()
-        return self.processor.decode(tokens)
+        return self.processor.decode(tokens, **kwargs)
