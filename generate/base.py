@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 import lightning as L
 import torch
-from lightning.fabric.plugins import BitsandbytesPrecision
+# from lightning.fabric.plugins import BitsandbytesPrecision
 from lightning.fabric.strategies import FSDPStrategy
 
 # support running without installing as a package

@@ -7,7 +7,7 @@ import torch
 from lightning import Callback, Fabric, LightningModule, Trainer
 from lightning.fabric.accelerators.xla import _XLA_GREATER_EQUAL_2_1
 from lightning.fabric.plugins import (
-    BitsandbytesPrecision,
+    # BitsandbytesPrecision,
     DoublePrecision,
     FSDPPrecision,
     HalfPrecision,
@@ -295,8 +295,8 @@ class SpeedMonitorBase:
 
 
 def plugin_to_compute_dtype(plugin: Precision) -> torch.dtype:
-    if isinstance(plugin, BitsandbytesPrecision):
-        return plugin.dtype
+    # if isinstance(plugin, BitsandbytesPrecision):
+    #     return plugin.dtype
     if isinstance(plugin, (HalfPrecision, MixedPrecision, HalfPrecisionPlugin)):
         return plugin._desired_input_dtype
     if isinstance(plugin, MixedPrecisionPlugin):
