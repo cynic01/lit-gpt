@@ -260,7 +260,7 @@ def get_batch(
         # force the longest sample at the beginning so potential OOMs happen right away
         ix[0] = longest_seq_ix
 
-    input_ids = [data[i]["input_ids_no_response"].type(torch.int64) for i in ix]
+    input_ids = [data[i]["input_ids"].type(torch.int64) for i in ix]
     labels = [data[i]["labels"].type(torch.int64) for i in ix]
 
     # this could be `longest_seq_length` to have a fixed size for all batches
