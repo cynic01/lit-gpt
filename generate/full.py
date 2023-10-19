@@ -132,11 +132,9 @@ def main(
             y = generate(model, x, max_returned_tokens, temperature=temperature, top_k=top_k, eos_id=tokenizer.eos_id)
             t = time.perf_counter() - t0
 
-            input = tokenizer.decode(x, skip_special_tokens=False)
-            # output = output.split("### Response:")[1].strip()
-            # output = output.split("<|assistant|>", maxsplit=1)[-1].strip()
-            output = tokenizer.decode(y, skip_special_tokens=False)#[len(input):].rstrip('<|endoftext|>')  # model specific
-            label = tokenizer.decode(label[len(x):], skip_special_tokens=False)
+            input = tokenizer.decode(x, skip_special_tokens=True).strip()
+            output = tokenizer.decode(y[len(x):], skip_special_tokens=True).strip()#.rstrip('<|endoftext|>')  # model specific
+            label = tokenizer.decode(label[len(x):], skip_special_tokens=True).strip()
             # fabric.print(output)
             csv_writer.writerow((input, output, label))
 
