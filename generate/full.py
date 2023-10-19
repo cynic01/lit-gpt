@@ -1,11 +1,13 @@
 import sys
 import time
+import csv
 from pathlib import Path
-from typing import Literal, Optional
+from tqdm import tqdm
+from typing import Dict, List, Tuple, Literal, Optional
 
 import lightning as L
 import torch
-from lightning.fabric.plugins import BitsandbytesPrecision
+# from lightning.fabric.plugins import BitsandbytesPrecision
 from lightning.fabric.strategies import FSDPStrategy
 
 # support running without installing as a package
@@ -22,13 +24,16 @@ from lit_gpt.utils import (
     load_checkpoint,
 )
 from scripts.prepare_alpaca import generate_prompt
+from finetune.full import get_longest_seq_length
 
 
 def main(
-    prompt: str = "What food do lamas eat?",
-    input: str = "",
-    finetuned_path: Path = Path("out/full/alpaca/lit_model_finetuned.pth"),
-    checkpoint_dir: Path = Path("checkpoints/stabilityai/stablelm-base-alpha-3b"),
+    # prompt: str = "What food do lamas eat?",
+    # input: str = "",
+    finetuned_path: Path = Path("out/full/pythia-2.8b-deduped-oasst1/driven-wood-164/iter-000299-ckpt.pth"),
+    checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-2.8b-deduped"),
+    dataset_path: Path = Path("data/oasst1/test.pt"),
+    out_path: Path = Path("out/inference/oasst1.csv"),
     quantize: Optional[Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq", "bnb.int8", "gptq.int4"]] = None,
     max_new_tokens: int = 100,
     top_k: int = 200,
@@ -103,31 +108,55 @@ def main(
     load_checkpoint(fabric, model, checkpoint_path)
     fabric.print(f"Time to load the model weights: {time.perf_counter() - t0:.02f} seconds.", file=sys.stderr)
 
+    test_data = torch.load(dataset_path)
+    print("Length of test data", len(test_data))
+
     tokenizer = Tokenizer(checkpoint_dir)
-    sample = {"instruction": prompt, "input": input}
-    prompt = generate_prompt(sample)
-    encoded = tokenizer.encode(prompt, device=fabric.device)
-    prompt_length = encoded.size(0)
-    max_returned_tokens = prompt_length + max_new_tokens
+    longest_seq_length, longest_seq_ix = get_longest_seq_length(test_data)
+    # sample = {"instruction": prompt, "input": input}
+    # prompt = generate_prompt(sample)
+    # encoded = tokenizer.encode(f'\n<|user|>\n{prompt}\n<|assistant|>\n', device=fabric.device)
+    # prompt_length = encoded.size(0)
+    max_returned_tokens = longest_seq_length + max_new_tokens
 
     with fabric.init_tensor():
         # set the max_seq_length to limit the memory usage to what we need
         model.max_seq_length = max_returned_tokens
         # enable the kv cache
         model.set_kv_cache(batch_size=1)
+    
+    with open(out_path, 'w') as f:
+        csv_writer = csv.writer(f)
+        for x, label in tqdm(get_data(fabric, test_data, longest_seq_length), total=len(test_data)):
+            t0 = time.perf_counter()
+            y = generate(model, x, max_returned_tokens, temperature=temperature, top_k=top_k, eos_id=tokenizer.eos_id)
+            t = time.perf_counter() - t0
 
-    t0 = time.perf_counter()
-    y = generate(model, encoded, max_returned_tokens, temperature=temperature, top_k=top_k, eos_id=tokenizer.eos_id)
-    t = time.perf_counter() - t0
+            input = tokenizer.decode(x, skip_special_tokens=False)
+            # output = output.split("### Response:")[1].strip()
+            # output = output.split("<|assistant|>", maxsplit=1)[-1].strip()
+            output = tokenizer.decode(y, skip_special_tokens=False)#[len(input):].rstrip('<|endoftext|>')  # model specific
+            label = tokenizer.decode(label[len(x):], skip_special_tokens=False)
+            # fabric.print(output)
+            csv_writer.writerow((input, output, label))
 
-    output = tokenizer.decode(y)
-    output = output.split("### Response:")[1].strip()
-    fabric.print(output)
-
-    tokens_generated = y.size(0) - prompt_length
-    fabric.print(f"\n\nTime for inference: {t:.02f} sec total, {tokens_generated / t:.02f} tokens/sec", file=sys.stderr)
+    # tokens_generated = y.size(0) - prompt_length
+    # fabric.print(f"\n\nTime for inference: {t:.02f} sec total, {tokens_generated / t:.02f} tokens/sec", file=sys.stderr)
     if fabric.device.type == "cuda":
         fabric.print(f"Memory used: {torch.cuda.max_memory_allocated() / 1e9:.02f} GB", file=sys.stderr)
+
+
+def get_data(
+    fabric: L.Fabric, data: List[Dict], longest_seq_length: Optional[int] = None
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    for entry in data:
+        x = entry["input_ids_no_response"].type(torch.int64)
+        y = entry["labels"].type(torch.int64)
+        if fabric.device.type == "cuda" and x.device.type == "cpu":
+            x, y = fabric.to_device((x.pin_memory(), y.pin_memory()))
+        else:
+            x, y = fabric.to_device((x, y))
+        yield x, y
 
 
 if __name__ == "__main__":

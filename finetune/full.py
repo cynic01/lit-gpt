@@ -8,6 +8,7 @@ import lightning as L
 import torch
 from lightning.fabric.loggers import CSVLogger
 from lightning.fabric.strategies import FSDPStrategy
+import wandb
 
 # support running without installing as a package
 wd = Path(__file__).parent.parent.resolve()
@@ -27,20 +28,20 @@ from lit_gpt.utils import (
 )
 from scripts.prepare_alpaca import generate_prompt
 
-eval_interval = 600
-save_interval = 1000
-eval_iters = 100
+eval_interval = 100
+save_interval = 100
+eval_iters = 10
 eval_max_new_tokens = 100
 log_interval = 1
-devices = 1
+devices = 4
 
 # Hyperparameters
 learning_rate = 3e-3
-batch_size = 64 / devices
-micro_batch_size = 1
+batch_size = 128 / devices
+micro_batch_size = 32
 gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
-epoch_size = 50000  # train dataset size
+epoch_size = 33455  # train dataset size
 num_epochs = 5
 max_iters = num_epochs * (epoch_size // micro_batch_size) // devices
 weight_decay = 0.02
@@ -50,10 +51,10 @@ hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str))
 
 
 def setup(
-    data_dir: Path = Path("data/alpaca"),
-    checkpoint_dir: Path = Path("checkpoints/stabilityai/stablelm-base-alpha-3b"),
-    out_dir: Path = Path("out/full/alpaca"),
-    precision: Optional[str] = None,
+    data_dir: Path = Path("data/oasst1"),
+    checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-2.8b-deduped"),
+    out_dir: Path = Path("out/full/pythia-2.8b-deduped-oasst1"),
+    precision: Optional[str] = "bf16-mixed",
 ) -> None:
     precision = precision or get_default_supported_precision(training=True)
 
@@ -76,6 +77,15 @@ def setup(
 
 
 def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) -> None:
+    fabric.print(hparams)
+    
+    wandb.init(
+        entity='llm-emergence',
+        project="lit-parrot",
+        group=time.strftime("%Y-%m-%d %H:%M %z"),
+        config=hparams
+    )
+    
     check_valid_checkpoint_dir(checkpoint_dir)
 
     speed_monitor = SpeedMonitor(fabric, window_size=50, time_unit="seconds")
@@ -86,7 +96,9 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) 
         os.makedirs(out_dir, exist_ok=True)
 
     train_data = torch.load(data_dir / "train.pt")
+    print("Length of train data", len(train_data))
     val_data = torch.load(data_dir / "test.pt")
+    print("Length of val data", len(val_data))
 
     config = Config.from_name(name=checkpoint_dir.name)
     checkpoint_path = checkpoint_dir / "lit_model.pth"
@@ -111,8 +123,10 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path) 
         fabric.print(f"Memory used: {torch.cuda.max_memory_allocated() / 1e9:.02f} GB")
 
     # Save the final checkpoint at the end of training
-    save_path = out_dir / "lit_model_finetuned.pth"
+    save_path = out_dir / wandb.run.name / "lit_model_finetuned.pth"
     save_checkpoint(fabric, model, save_path)
+    
+    wandb.finish()
 
 
 def train(
@@ -191,6 +205,7 @@ def train(
                 f"iter {iter_num} step {step_count}: loss {loss.item():.4f}, iter time:"
                 f" {(t1 - iter_t0) * 1000:.2f}ms{' (optimizer.step)' if not is_accumulating else ''}"
             )
+            wandb.log({"iter": iter_num, "loss": loss.item(), "time": (t1 - iter_t0)*1000})
 
         if not is_accumulating and step_count % eval_interval == 0:
             t0 = time.perf_counter()
@@ -199,8 +214,12 @@ def train(
             speed_monitor.eval_end(t1)
             fabric.print(f"step {iter_num}: val loss {val_loss.item():.4f}, val time: {t1 * 1000:.2f}ms")
             fabric.barrier()
+            wandb.log({"val_loss": val_loss.item()})
+            # text_table = wandb.Table(columns=["inputs", "outputs"], data=list(zip(val_inputs, val_outputs)))
+            # wandb.log({f'val_samples_{iter_num}': text_table})
+            
         if not is_accumulating and step_count % save_interval == 0:
-            checkpoint_path = out_dir / f"iter-{iter_num:06d}-ckpt.pth"
+            checkpoint_path = out_dir / wandb.run.name / f"iter-{iter_num:06d}-ckpt.pth"
             save_checkpoint(fabric, model, checkpoint_path)
 
 
@@ -218,9 +237,9 @@ def validate(fabric: L.Fabric, model: GPT, val_data: List[Dict], tokenizer: Toke
     # produce an example:
     instruction = "Recommend a movie for me to watch during the weekend and explain the reason."
     fabric.print(instruction)
-    sample = {"instruction": instruction, "input": ""}
-    prompt = generate_prompt(sample)
-    encoded = tokenizer.encode(prompt, device=fabric.device)
+    # sample = {"instruction": instruction, "input": ""}
+    # prompt = generate_prompt(sample)
+    encoded = tokenizer.encode(f'\n<|user|>\n{instruction}\n<|assistant|>\n', device=fabric.device)
     with fabric.init_tensor():
         # do not set `max_seq_length=max_returned_token` because memory is not a concern here
         model.set_kv_cache(batch_size=1)
@@ -241,7 +260,7 @@ def get_batch(
         # force the longest sample at the beginning so potential OOMs happen right away
         ix[0] = longest_seq_ix
 
-    input_ids = [data[i]["input_ids"].type(torch.int64) for i in ix]
+    input_ids = [data[i]["input_ids_no_response"].type(torch.int64) for i in ix]
     labels = [data[i]["labels"].type(torch.int64) for i in ix]
 
     # this could be `longest_seq_length` to have a fixed size for all batches
@@ -271,6 +290,7 @@ def get_longest_seq_length(data: List[Dict]) -> Tuple[int, int]:
 
 
 def save_checkpoint(fabric: L.Fabric, model: torch.nn.Module, file_path: Path) -> None:
+    file_path.parent.mkdir(parents=True, exist_ok=True)
     fabric.print(f"Saving weights to {str(file_path)!r}")
     fabric.save(file_path, {"model": model})
 
