@@ -98,7 +98,7 @@ if __name__ == '__main__':
             print(i, 'out of', total_groups, 'TOTAL CONVERSATIONS:', total_conversations)
 
             
-        save_data(destination_path / 'oasst1_' + split + '.pkl', conversation_data)
+        save_data(destination_path / f'oasst1_{split}.pkl', conversation_data)
 
 
             
