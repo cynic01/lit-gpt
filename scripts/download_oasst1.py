@@ -1,6 +1,12 @@
-import pandas as pd
-from datasets import load_dataset
+import sys
 import pickle
+import pandas as pd
+from pathlib import Path
+from datasets import load_dataset
+
+# support running without installing as a package
+wd = Path(__file__).parent.parent.resolve()
+sys.path.append(str(wd))
 
 def save_data(filename, data):
     #Storing data with labels
@@ -34,8 +40,6 @@ def depth_first_traversal(group, parent_id, path=[], paths=[]):
     
     return path, paths
 
-    
-
 
 def convert_group_to_conversation(group):
     group.to_csv('preview.csv')
@@ -67,19 +71,14 @@ def convert_group_to_conversation(group):
     return all_conversations
 
 
-
-    
-    
-
-
-
-
 if __name__ == '__main__':
 
     ds = load_dataset("OpenAssistant/oasst1")
     train = ds['train']      # len(train)=84437 (95%)
     val = ds['validation']   # len(val)=4401 (5%)
     print(len(train), len(val))
+    destination_path = Path(wd / "data/oasst1")
+    destination_path.mkdir(parents=True, exist_ok=True)
 
 
     for split in ['train', 'validation']:
@@ -99,7 +98,7 @@ if __name__ == '__main__':
             print(i, 'out of', total_groups, 'TOTAL CONVERSATIONS:', total_conversations)
 
             
-        save_data('oasst1_' + split + '.pkl', conversation_data)
+        save_data(destination_path / 'oasst1_' + split + '.pkl', conversation_data)
 
 
             
