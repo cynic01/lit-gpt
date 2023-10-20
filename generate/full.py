@@ -115,7 +115,7 @@ def main(
     longest_seq_length, longest_seq_ix = get_longest_seq_length(test_data)
     # sample = {"instruction": prompt, "input": input}
     # prompt = generate_prompt(sample)
-    # encoded = tokenizer.encode(f'\n<|user|>\n{prompt}\n<|assistant|>\n', device=fabric.device)
+    # encoded = tokenizer.encode(f'<|user|>{prompt}<|assistant|>', device=fabric.device)
     # prompt_length = encoded.size(0)
     max_returned_tokens = longest_seq_length + max_new_tokens
 

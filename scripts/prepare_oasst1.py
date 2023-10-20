@@ -98,7 +98,7 @@ def generate_prompt(turn_sequence, current_turn, tokenizer, max_length):
     current_speaker, current_message = turn_sequence[current_turn]
     if current_speaker == 'prompter':
         current_speaker = 'user'
-    encoded_full_prompt_and_response = tokenizer.encode(f'\n<|{current_speaker}|>\n{current_message}\n', eos=True)
+    encoded_full_prompt_and_response = tokenizer.encode(f'<|{current_speaker}|>{current_message}', eos=True)
     assert not (len(encoded_full_prompt_and_response) > max_length and len(turn_sequence) == 1)
     response_length = len(encoded_full_prompt_and_response)
 
@@ -106,7 +106,7 @@ def generate_prompt(turn_sequence, current_turn, tokenizer, max_length):
     for prev_speaker, prev_message in reversed(turn_sequence[:current_turn]):
         if prev_speaker == 'prompter':
             prev_speaker = 'user'
-        prev_message_tokenized = tokenizer.encode(f'\n<|{prev_speaker}|>\n{prev_message}\n')
+        prev_message_tokenized = tokenizer.encode(f'<|{prev_speaker}|>{prev_message}')
         
         if len(encoded_full_prompt_and_response) + len(prev_message_tokenized) > max_length:
             if not at_least_one_full_turn_prompt:
@@ -136,7 +136,7 @@ def generate_prompt(turn_sequence, current_turn, tokenizer, max_length):
         print (e, encoded_full_prompt_and_response)
         raise e
         
-    return encoded_full_prompt_and_response[:max(0, len(encoded_full_prompt_and_response) - response_length + len(tokenizer.encode(f'\n<|assistant|>\n')))].clone(), encoded_full_prompt_and_response
+    return encoded_full_prompt_and_response[:max(0, len(encoded_full_prompt_and_response) - response_length + len(tokenizer.encode(f'<|assistant|>')))].clone(), encoded_full_prompt_and_response
         
         
 if __name__ == "__main__":

@@ -28,8 +28,8 @@ from lit_gpt.utils import (
 )
 from scripts.prepare_alpaca import generate_prompt
 
-eval_interval = 100
-save_interval = 100
+eval_interval = 50
+save_interval = 50
 eval_iters = 10
 eval_max_new_tokens = 100
 log_interval = 1
@@ -38,7 +38,7 @@ devices = 4
 # Hyperparameters
 learning_rate = 3e-3
 batch_size = 128 / devices
-micro_batch_size = 32
+micro_batch_size = 16
 gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
 epoch_size = 33455  # train dataset size
@@ -239,7 +239,7 @@ def validate(fabric: L.Fabric, model: GPT, val_data: List[Dict], tokenizer: Toke
     fabric.print(instruction)
     # sample = {"instruction": instruction, "input": ""}
     # prompt = generate_prompt(sample)
-    encoded = tokenizer.encode(f'\n<|user|>\n{instruction}\n<|assistant|>\n', device=fabric.device)
+    encoded = tokenizer.encode(f'<|user|>{instruction}<|assistant|>', device=fabric.device)
     with fabric.init_tensor():
         # do not set `max_seq_length=max_returned_token` because memory is not a concern here
         model.set_kv_cache(batch_size=1)
