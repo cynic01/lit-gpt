@@ -13,7 +13,7 @@ from lightning.fabric.plugins import (
     HalfPrecision,
     MixedPrecision,
     Precision,
-    TransformerEnginePrecision,
+    # TransformerEnginePrecision,
     XLAPrecision,
 )
 from lightning.fabric.utilities.rank_zero import rank_zero_only as fabric_rank_zero_only
@@ -305,8 +305,8 @@ def plugin_to_compute_dtype(plugin: Precision) -> torch.dtype:
         return torch.double
     if isinstance(plugin, (XLAPrecision, XLAPrecisionPlugin)):
         return plugin._desired_dtype
-    if isinstance(plugin, TransformerEnginePrecision):
-        return torch.int8
+    # if isinstance(plugin, TransformerEnginePrecision):
+    #     return torch.int8
     if isinstance(plugin, (FSDPPrecision, FSDPPrecisionPlugin)):
         return plugin.mixed_precision_config.reduce_dtype
     if isinstance(plugin, Precision):
