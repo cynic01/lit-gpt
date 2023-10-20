@@ -42,7 +42,6 @@ def depth_first_traversal(group, parent_id, path=[], paths=[]):
 
 
 def convert_group_to_conversation(group):
-    group.to_csv('preview.csv')
     all_conversations = []
 
     #find parent_id
