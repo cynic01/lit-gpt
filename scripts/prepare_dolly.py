@@ -18,7 +18,7 @@ from lit_gpt.tokenizer import Tokenizer
 
 def prepare(
     destination_path: Path = Path("data/dolly"),
-    checkpoint_dir: Path = Path("checkpoints/stabilityai/stablelm-base-alpha-3b"),
+    checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-1b-deduped"),
     test_split_fraction: float = 0.1,
     seed: int = 42,
     mask_inputs: bool = True,
@@ -136,17 +136,18 @@ def generate_prompt(example: dict) -> str:
     """Generates a standardized message to prompt the model with an instruction, optional input and a
     'response' field."""
 
-    if example["input"]:
-        return (
-            "Below is an instruction that describes a task, paired with an input that provides further context. "
-            "Write a response that appropriately completes the request.\n\n"
-            f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Response:"
-        )
-    return (
-        "Below is an instruction that describes a task. "
-        "Write a response that appropriately completes the request.\n\n"
-        f"### Instruction:\n{example['instruction']}\n\n### Response:"
-    )
+    # if example["input"]:
+    #     return (
+    #         "Below is an instruction that describes a task, paired with an input that provides further context. "
+    #         "Write a response that appropriately completes the request.\n\n"
+    #         f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Response:"
+    #     )
+    # return (
+    #     "Below is an instruction that describes a task. "
+    #     "Write a response that appropriately completes the request.\n\n"
+    #     f"### Instruction:\n{example['instruction']}\n\n### Response:"
+    # )
+    return f"<|user|>{example['instruction']}<|assistant|>"
 
 
 if __name__ == "__main__":
