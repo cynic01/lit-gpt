@@ -33,15 +33,15 @@ save_interval = 50
 eval_iters = 10
 eval_max_new_tokens = 100
 log_interval = 1
-devices = 4
+devices = 5
 
 # Hyperparameters
 learning_rate = 3e-3
 batch_size = 128 / devices
-micro_batch_size = 16
+micro_batch_size = 1
 gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
-epoch_size = 33455  # train dataset size
+epoch_size = 46965  # train dataset size
 num_epochs = 5
 max_iters = num_epochs * (epoch_size // micro_batch_size) // devices
 weight_decay = 0.02
@@ -51,9 +51,9 @@ hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str))
 
 
 def setup(
-    data_dir: Path = Path("data/oasst1"),
+    data_dir: Path = Path("data/oasst1_dolly"),
     checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-2.8b-deduped"),
-    out_dir: Path = Path("out/full/pythia-2.8b-deduped-oasst1"),
+    out_dir: Path = Path("out/full/pythia-2.8b-deduped-oasst1-dolly"),
     precision: Optional[str] = "bf16-mixed",
 ) -> None:
     precision = precision or get_default_supported_precision(training=True)
@@ -66,6 +66,7 @@ def setup(
             state_dict_type="full",
             limit_all_gathers=True,
             cpu_offload=False,
+            # sharding_strategy="NO_SHARD",
         )
     else:
         strategy = "auto"

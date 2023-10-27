@@ -30,7 +30,7 @@ from finetune.full import get_longest_seq_length
 def main(
     # prompt: str = "What food do lamas eat?",
     # input: str = "",
-    finetuned_path: Path = Path("out/full/pythia-2.8b-deduped-oasst1/driven-wood-164/iter-000299-ckpt.pth"),
+    finetuned_path: Path = Path("out/full/pythia-2.8b-deduped-oasst1/deft-wildflower-216/iter-002499-ckpt.pth"),
     checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-2.8b-deduped"),
     dataset_path: Path = Path("data/oasst1/test.pt"),
     out_path: Path = Path("out/inference/oasst1.csv"),
