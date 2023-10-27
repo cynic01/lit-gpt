@@ -26,14 +26,18 @@ from lit_gpt.utils import (
 from scripts.prepare_alpaca import generate_prompt
 from finetune.full import get_longest_seq_length
 
+model_name = "pythia-2.8b-deduped"
+run_name = "driven-wood-164"
+checkpoint_name = "iter-000299-ckpt"
+dataset_name = "oasst1"
 
 def main(
     # prompt: str = "What food do lamas eat?",
     # input: str = "",
-    finetuned_path: Path = Path("out/full/pythia-2.8b-deduped-oasst1/deft-wildflower-216/iter-002499-ckpt.pth"),
-    checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-2.8b-deduped"),
-    dataset_path: Path = Path("data/oasst1/test.pt"),
-    out_path: Path = Path("out/inference/oasst1.csv"),
+    finetuned_path: Path = Path(f"out/full/{model_name}-{dataset_name}/{run_name}/{checkpoint_name}.pth"),
+    checkpoint_dir: Path = Path(f"checkpoints/EleutherAI/{model_name}"),
+    dataset_path: Path = Path(f"data/{dataset_name}/test.pt"),
+    out_path: Path = Path(f"out/inference/{model_name}-{dataset_name}-{checkpoint_name}.csv"),
     quantize: Optional[Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq", "bnb.int8", "gptq.int4"]] = None,
     max_new_tokens: int = 100,
     top_k: int = 200,
@@ -125,6 +129,8 @@ def main(
         # enable the kv cache
         model.set_kv_cache(batch_size=1)
     
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
     with open(out_path, 'w') as f:
         csv_writer = csv.writer(f)
         for x, label in tqdm(get_data(fabric, test_data, longest_seq_length), total=len(test_data)):
