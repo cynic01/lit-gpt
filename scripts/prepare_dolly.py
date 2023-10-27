@@ -25,7 +25,7 @@ def prepare(
     data_file_name: str = "dolly_data_cleaned.json",
     data_file_url: str = "https://huggingface.co/datasets/databricks/databricks-dolly-15k/resolve/main/databricks-dolly-15k.jsonl",
     ignore_index: int = -1,
-    max_seq_length: Optional[int] = None,
+    max_seq_length: Optional[int] = 256,
 ) -> None:
     """Prepare the Dolly 15k dataset for instruction tuning.
 
