@@ -57,7 +57,7 @@ def prepare(
     part2 = part2.dropna(how='all')
 
     df = pd.concat([part1, part2], axis=0, ignore_index=True).astype(str).fillna("")
-    df = df.sample(n=50151, random_state=seed, axis=0)  # random sample to keep same size with oasst1 + dolly
+    df = df.sample(n=round(46965 / (1-test_split_fraction)), random_state=seed, axis=0)  # random sample to keep same train dataset size with oasst1 + dolly
     print(df.head(10))
     if not (df.columns.values == COLUMNS).all():
         raise ValueError(f"CSV columns must be {COLUMNS}, found {df.columns.values}")
