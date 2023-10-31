@@ -27,8 +27,8 @@ def prepare(
     test_split_fraction: float = 0.1,
     seed: int = 42,
     mask_inputs: bool = True,
-    data_file_urls = ["https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/HTML_cleaned_raw_dataset/sg_90k_part1_html_cleaned.json",
-                      "https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/HTML_cleaned_raw_dataset/sg_90k_part2_html_cleaned.json"],
+    data_file_name: str = "ShareGPT_V3_unfiltered_cleaned_split.json",
+    data_file_url: str = "https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/ShareGPT_V3_unfiltered_cleaned_split.json",
     ignore_index: int = -1,
     max_seq_length: Optional[int] = 256,
 ) -> None:
@@ -43,22 +43,20 @@ def prepare(
             max_seq_length = config["block_size"]
 
     destination_path.mkdir(parents=True, exist_ok=True)
-    data_file_paths = [destination_path / "sg_90k_part1_html_cleaned.json", destination_path / "sg_90k_part2_html_cleaned.json"]
+    data_file_path = destination_path / data_file_name
     logger.info("Loading data file ...")
-    download_if_missing(data_file_paths[0], data_file_urls[0])
-    download_if_missing(data_file_paths[1], data_file_urls[1])
+    download_if_missing(data_file_path, data_file_url)
 
-    part1 = pd.read_json(data_file_paths[0], orient='records')
-    part1 = part1.apply(process_conversation, axis=1)
-    part1 = part1.dropna(how='all')
+    df = pd.read_json(data_file_path, orient='records')
+    conversations = df.agg(process_conversation, axis=1)
+    df = pd.concat(conversations.to_list(), axis=0, ignore_index=True)
+    df = df.dropna(how='all').fillna("").astype(str)
+    print(f"Dataset has {len(df):,} entries before sampling")
 
-    part2 = pd.read_json(data_file_paths[1], orient='records')
-    part2 = part2.apply(process_conversation, axis=1)
-    part2 = part2.dropna(how='all')
-
-    df = pd.concat([part1, part2], axis=0, ignore_index=True).astype(str).fillna("")
     df = df.sample(n=round(46965 / (1-test_split_fraction)), random_state=seed, axis=0)  # random sample to keep same train dataset size with oasst1 + dolly
+    print(f"Dataset has {len(df):,} entries after sampling")
     print(df.head(10))
+    
     if not (df.columns.values == COLUMNS).all():
         raise ValueError(f"CSV columns must be {COLUMNS}, found {df.columns.values}")
     data = json.loads(df.to_json(orient="records", indent=4))
@@ -111,17 +109,17 @@ def download_if_missing(file_path: Path, file_url: str) -> None:
 
 
 def process_conversation(row):
-    out = {}
-    assert len(row['conversations']) > 0
+    if len(row['conversations']) <= 0:
+        return None
+    out = []
     for i in range(len(row['conversations'])):
-        if row['conversations'][i]['from'] in ('gpt', 'chatgpt'):
+        if row['conversations'][i]['from'] != 'human':
             if i == 0 or row['conversations'][i-1]['from'] != 'human':
                 continue
-            out['instruction'] = row['conversations'][i-1]['value']
-            out['input'] = None
-            out['output'] = row['conversations'][i]['value']
-            break  # only record the first turn
-    return pd.Series(out) if 'instruction' in out else None
+            out.append({'instruction': row['conversations'][i-1]['value'],
+                        'input': None,
+                        'output': row['conversations'][i]['value']})
+    return pd.DataFrame(out) if out else None
 
 
 def prepare_sample(example: dict, tokenizer: Tokenizer, max_length: int, mask_inputs: bool, ignore_index: int) -> dict:
@@ -163,17 +161,18 @@ def generate_prompt(example: dict) -> str:
     """Generates a standardized message to prompt the model with an instruction, optional input and a
     'response' field."""
 
-    if example["input"]:
-        return (
-            "Below is an instruction that describes a task, paired with an input that provides further context. "
-            "Write a response that appropriately completes the request.\n\n"
-            f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Response:"
-        )
-    return (
-        "Below is an instruction that describes a task. "
-        "Write a response that appropriately completes the request.\n\n"
-        f"### Instruction:\n{example['instruction']}\n\n### Response:"
-    )
+    # if example["input"]:
+    #     return (
+    #         "Below is an instruction that describes a task, paired with an input that provides further context. "
+    #         "Write a response that appropriately completes the request.\n\n"
+    #         f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Response:"
+    #     )
+    # return (
+    #     "Below is an instruction that describes a task. "
+    #     "Write a response that appropriately completes the request.\n\n"
+    #     f"### Instruction:\n{example['instruction']}\n\n### Response:"
+    # )
+    return f"<|user|>{example['instruction']}<|assistant|>"
 
 
 if __name__ == "__main__":
