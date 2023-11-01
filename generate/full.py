@@ -132,13 +132,17 @@ def main(
     out = []
 
     for x, label in tqdm(get_data(fabric, test_data, longest_seq_length), total=len(test_data)):
-        # t0 = time.perf_counter()
+        t0 = time.perf_counter()
         y = generate(model, x, max_returned_tokens, temperature=temperature, top_k=top_k, eos_id=tokenizer.eos_id)
-        # t = time.perf_counter() - t0
+        t = time.perf_counter() - t0
 
-        input = tokenizer.decode(x, skip_special_tokens=True).strip()
-        output = tokenizer.decode(y[len(x):], skip_special_tokens=True).strip()#.rstrip('<|endoftext|>')  # model specific
-        label = tokenizer.decode(label[len(x):], skip_special_tokens=True).strip()
+        prompt_length = x.size(0)
+        tokens_generated = y.size(0) - prompt_length
+        tqdm.write(f"Time for inference: {t:.02f} sec total, {tokens_generated / t:.02f} tokens/sec", file=sys.stderr)
+
+        input = tokenizer.decode(x, skip_special_tokens=True)
+        output = tokenizer.decode(y[prompt_length:], skip_special_tokens=True)
+        label = tokenizer.decode(label[prompt_length:], skip_special_tokens=True)
         out.append({'input': input, 'output': output, 'label': label})
 
     df = pd.DataFrame(out, dtype='string')
@@ -146,8 +150,6 @@ def main(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_pickle(out_path)
 
-    # tokens_generated = y.size(0) - prompt_length
-    # fabric.print(f"\n\nTime for inference: {t:.02f} sec total, {tokens_generated / t:.02f} tokens/sec", file=sys.stderr)
     if fabric.device.type == "cuda":
         fabric.print(f"Memory used: {torch.cuda.max_memory_allocated() / 1e9:.02f} GB", file=sys.stderr)
 
