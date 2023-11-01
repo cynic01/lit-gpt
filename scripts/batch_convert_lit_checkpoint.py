@@ -46,6 +46,8 @@ chosen = sharegpt
 
 for run in chosen:
     model_name, run_name, checkpoint_name, dataset_name = run
+    output_path = Path(f"out/converted/{model_name}-{dataset_name}-{checkpoint_name}/pytorch_model.bin")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     convert_lit_checkpoint(checkpoint_path=Path(f"out/full/{model_name}-{dataset_name}/{run_name}/{checkpoint_name}.pth"),
-                           output_path=Path(f"out/converted/{model_name}-{dataset_name}-{checkpoint_name}/pytorch_model.bin"),
+                           output_path=output_path,
                            config_path=Path(f"checkpoints/EleutherAI/{model_name}/lit_config.json"))
