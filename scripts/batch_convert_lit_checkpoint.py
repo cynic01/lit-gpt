@@ -1,3 +1,4 @@
+import requests
 from convert_lit_checkpoint import *
 
 # Format: model_name, run_name, checkpoint_name, dataset_name
@@ -51,3 +52,6 @@ for run in chosen:
     convert_lit_checkpoint(checkpoint_path=Path(f"out/full/{model_name}-{dataset_name}/{run_name}/{checkpoint_name}.pth"),
                            output_path=output_path,
                            config_path=Path(f"checkpoints/EleutherAI/{model_name}/lit_config.json"))
+    response = requests.get(f'https://huggingface.co/EleutherAI/{model_name}/resolve/main/config.json')
+    with open(output_path.parent / 'config.json', 'w') as f:
+        f.write(response)
