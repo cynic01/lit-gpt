@@ -1,11 +1,11 @@
 import sys
 import time
-import csv
 from pathlib import Path
 from tqdm import tqdm
 from typing import Dict, List, Tuple, Literal, Optional
 
 import lightning as L
+import pandas as pd
 import torch
 # from lightning.fabric.plugins import BitsandbytesPrecision
 from lightning.fabric.strategies import FSDPStrategy
@@ -37,7 +37,7 @@ def main(
     finetuned_path: Path = Path(f"out/full/{model_name}-{dataset_name}/{run_name}/{checkpoint_name}.pth"),
     checkpoint_dir: Path = Path(f"checkpoints/EleutherAI/{model_name}"),
     dataset_path: Path = Path(f"data/{dataset_name}/test.pt"),
-    out_path: Path = Path(f"out/inference/{model_name}-{dataset_name}-{checkpoint_name}.csv"),
+    out_path: Path = Path(f"out/inference/{model_name}-{dataset_name}-{checkpoint_name}.pkl"),
     quantize: Optional[Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq", "bnb.int8", "gptq.int4"]] = None,
     max_new_tokens: int = 100,
     top_k: int = 200,
@@ -113,7 +113,7 @@ def main(
     fabric.print(f"Time to load the model weights: {time.perf_counter() - t0:.02f} seconds.", file=sys.stderr)
 
     test_data = torch.load(dataset_path)
-    print("Length of test data", len(test_data))
+    fabric.print("Length of test data", len(test_data))
 
     tokenizer = Tokenizer(checkpoint_dir)
     longest_seq_length, longest_seq_ix = get_longest_seq_length(test_data)
@@ -128,21 +128,23 @@ def main(
         model.max_seq_length = max_returned_tokens
         # enable the kv cache
         model.set_kv_cache(batch_size=1)
-    
+
+    out = []
+
+    for x, label in tqdm(get_data(fabric, test_data, longest_seq_length), total=len(test_data)):
+        # t0 = time.perf_counter()
+        y = generate(model, x, max_returned_tokens, temperature=temperature, top_k=top_k, eos_id=tokenizer.eos_id)
+        # t = time.perf_counter() - t0
+
+        input = tokenizer.decode(x, skip_special_tokens=True).strip()
+        output = tokenizer.decode(y[len(x):], skip_special_tokens=True).strip()#.rstrip('<|endoftext|>')  # model specific
+        label = tokenizer.decode(label[len(x):], skip_special_tokens=True).strip()
+        out.append({'input': input, 'output': output, 'label': label})
+
+    df = pd.DataFrame(out, dtype='string')
+    fabric.print(df.head(10))
     out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(out_path, 'w') as f:
-        csv_writer = csv.writer(f)
-        for x, label in tqdm(get_data(fabric, test_data, longest_seq_length), total=len(test_data)):
-            t0 = time.perf_counter()
-            y = generate(model, x, max_returned_tokens, temperature=temperature, top_k=top_k, eos_id=tokenizer.eos_id)
-            t = time.perf_counter() - t0
-
-            input = tokenizer.decode(x, skip_special_tokens=True).strip()
-            output = tokenizer.decode(y[len(x):], skip_special_tokens=True).strip()#.rstrip('<|endoftext|>')  # model specific
-            label = tokenizer.decode(label[len(x):], skip_special_tokens=True).strip()
-            # fabric.print(output)
-            csv_writer.writerow((input, output, label))
+    df.to_pickle(out_path)
 
     # tokens_generated = y.size(0) - prompt_length
     # fabric.print(f"\n\nTime for inference: {t:.02f} sec total, {tokens_generated / t:.02f} tokens/sec", file=sys.stderr)
