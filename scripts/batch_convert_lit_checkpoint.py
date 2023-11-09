@@ -4,7 +4,7 @@
 sharegpt = [
     ("pythia-2.8b-deduped", "abominable-broomstick-372", "iter-000549-ckpt", "sharegpt"),
     ("pythia-2.8b-deduped", "abominable-broomstick-372", "iter-000049-ckpt", "sharegpt"),
-    ("pythia-1.4b-deduped", "headless-specter-368", "iter-001749-ckpt", "sharegpt"),
+    ("pythia-1.4b-deduped", "headless-specter-368", "iter-000299-ckpt", "sharegpt"),
     ("pythia-1.4b-deduped", "headless-specter-368", "iter-000049-ckpt", "sharegpt"),
     ("pythia-1.4b-deduped", "headless-specter-368", "iter-000099-ckpt", "sharegpt"),
     ("pythia-1b-deduped", "creepy-bones-360", "iter-001799-ckpt", "sharegpt"),
