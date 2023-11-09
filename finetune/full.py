@@ -51,7 +51,7 @@ hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str))
 
 
 def setup(
-    data_dir: Path = Path("data/oasst1_dolly"),
+    data_dir: Path = Path("data/oasst1-dolly"),
     checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-2.8b-deduped"),
     out_dir: Path = Path("out/full/pythia-2.8b-deduped-oasst1-dolly"),
     precision: Optional[str] = "bf16-mixed",

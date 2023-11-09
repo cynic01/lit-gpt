@@ -9,7 +9,7 @@ wd = Path(__file__).parent.parent.resolve()
 sys.path.append(str(wd))
 
 def combine(
-    destination_path: Path = Path("data/oasst1_dolly"),
+    destination_path: Path = Path("data/oasst1-dolly"),
     first_dataset: Path = Path("data/oasst1"),
     second_dataset: Path = Path("data/dolly")
 ):
