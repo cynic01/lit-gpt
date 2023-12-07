@@ -33,27 +33,28 @@ save_interval = 50
 eval_iters = 10
 eval_max_new_tokens = 100
 log_interval = 1
-devices = 5
+devices = 1
 
 # Hyperparameters
-learning_rate = 3e-3
+learning_rate = 3e-4
 batch_size = 128 / devices
-micro_batch_size = 1
+micro_batch_size = 32
 gradient_accumulation_iters = batch_size // micro_batch_size
 assert gradient_accumulation_iters > 0
 epoch_size = 46965  # train dataset size
 num_epochs = 5
 max_iters = num_epochs * (epoch_size // micro_batch_size) // devices
 weight_decay = 0.02
+grad_clip = 1.0
 warmup_steps = 2 * (epoch_size // micro_batch_size) // devices // gradient_accumulation_iters  # 2 epochs
 
 hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str)) and not k.startswith("_")}
 
 
 def setup(
-    data_dir: Path = Path("data/oasst1-dolly"),
-    checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-2.8b-deduped"),
-    out_dir: Path = Path("out/full/pythia-2.8b-deduped-oasst1-dolly"),
+    data_dir: Path = Path("data/sharegpt"),
+    checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-410m-deduped"),
+    out_dir: Path = Path("out/full/pythia-410m-deduped-sharegpt"),
     precision: Optional[str] = "bf16-mixed",
 ) -> None:
     precision = precision or get_default_supported_precision(training=True)
@@ -66,7 +67,7 @@ def setup(
             state_dict_type="full",
             limit_all_gathers=True,
             cpu_offload=False,
-            # sharding_strategy="NO_SHARD",
+            sharding_strategy="NO_SHARD",
         )
     else:
         strategy = "auto"
@@ -171,6 +172,7 @@ def train(
             fabric.backward(loss / gradient_accumulation_iters)
 
         if not is_accumulating:
+            # fabric.clip_gradients(model, optimizer, max_norm=grad_clip)
             optimizer.step()
             optimizer.zero_grad()
             step_count += 1
