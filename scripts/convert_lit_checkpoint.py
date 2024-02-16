@@ -1,5 +1,6 @@
 import gc
 import sys
+import requests
 from functools import partial
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Union
@@ -209,6 +210,7 @@ def check_conversion_supported(lit_weights: Dict[str, torch.Tensor]) -> None:
 
 @torch.inference_mode()
 def convert_lit_checkpoint(checkpoint_path: Path, output_path: Path, config_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     config = Config.from_json(config_path)
 
     if "falcon" in config.name:
@@ -227,6 +229,10 @@ def convert_lit_checkpoint(checkpoint_path: Path, output_path: Path, config_path
         copy_fn(sd, lit_weights, saver=saver)
         gc.collect()
         saver.save(sd)
+    
+    response = requests.get(f'https://huggingface.co/EleutherAI/{config_path.parent.name}/resolve/main/config.json')
+    with open(output_path.parent / 'config.json', 'w') as f:
+        f.write(response.text)
 
 
 if __name__ == "__main__":

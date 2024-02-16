@@ -34,7 +34,8 @@ def main(
     llm = LLM(model=converted_model_path,
               tokenizer=checkpoint_dir,
               tensor_parallel_size=devices,
-              swap_space=0)
+              swap_space=0,
+              gpu_memory_utilization=0.8)
     print(f"Time to instantiate model: {time.perf_counter() - t0:.02f} seconds.")
     
     tok = llm.get_tokenizer()
