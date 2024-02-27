@@ -19,8 +19,8 @@ from lit_gpt.tokenizer import Tokenizer
 def prepare(
     destination_path: Path = Path("data/dolly"),
     checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-1b-deduped"),
-    eval_split_fraction: float = 0.05,
-    test_split_fraction: float = 0.05,
+    eval_split_fraction: float = 0.1,
+    test_split_fraction: float = 0.1,
     seed: int = 42,
     mask_inputs: bool = True,
     data_file_name: str = "dolly_data_cleaned.json",

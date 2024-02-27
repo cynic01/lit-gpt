@@ -24,8 +24,8 @@ COLUMNS = ("instruction", "input", "output")
 def prepare(
     destination_path: Path = Path("data/sharegpt"),
     checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-1b-deduped"),
-    eval_split_fraction: float = 0.05,
-    test_split_fraction: float = 0.05,
+    eval_split_fraction: float = 0.1,
+    test_split_fraction: float = 0.1,
     seed: int = 42,
     mask_inputs: bool = True,
     data_file_name: str = "ShareGPT_V3_unfiltered_cleaned_split.json",
