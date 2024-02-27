@@ -24,7 +24,8 @@ COLUMNS = ("instruction", "input", "output")
 def prepare(
     destination_path: Path = Path("data/sharegpt"),
     checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-1b-deduped"),
-    test_split_fraction: float = 0.1,
+    eval_split_fraction: float = 0.05,
+    test_split_fraction: float = 0.05,
     seed: int = 42,
     mask_inputs: bool = True,
     data_file_name: str = "ShareGPT_V3_unfiltered_cleaned_split.json",
@@ -64,13 +65,16 @@ def prepare(
     print("Loading tokenizer...")
     tokenizer = Tokenizer(checkpoint_dir)
 
-    # Partition the dataset into train and test
-    train_set, test_set = random_split(
-        data, [1.0 - test_split_fraction, test_split_fraction], generator=torch.Generator().manual_seed(seed)
+    # Partition the dataset into train, eval and test
+    train_set, eval_set, test_set = random_split(
+        data,
+        [1.0 - eval_split_fraction - test_split_fraction, eval_split_fraction, test_split_fraction],
+        generator=torch.Generator().manual_seed(seed)
     )
-    train_set, test_set = list(train_set), list(test_set)
+    train_set, eval_set, test_set = list(train_set), list(eval_set), list(test_set)
 
     print(f"train has {len(train_set):,} samples")
+    print(f"eval has {len(eval_set):,} samples")
     print(f"test has {len(test_set):,} samples")
 
     print("Processing train split ...")
@@ -86,6 +90,19 @@ def prepare(
     ]
     torch.save(train_set, destination_path / "train.pt")
 
+    print("Processing eval split ...")
+    eval_set = [
+        prepare_sample(
+            example=sample,
+            tokenizer=tokenizer,
+            max_length=max_seq_length,
+            mask_inputs=mask_inputs,
+            ignore_index=ignore_index,
+        )
+        for sample in tqdm(eval_set)
+    ]
+    torch.save(eval_set, destination_path / "eval.pt")
+    
     print("Processing test split ...")
     test_set = [
         prepare_sample(
