@@ -1,7 +1,7 @@
-
 from analyse_oasst1 import get_conversation_text
 import sys
 import torch
+from torch.utils.data import random_split
 from pathlib import Path
 from tqdm import tqdm
 from itertools import chain
@@ -17,6 +17,7 @@ IGNORE_INDEX = -1
 def prepare(
     destination_path: Path = Path("data/oasst1"),
     checkpoint_dir: Path = Path("checkpoints/EleutherAI/pythia-1b-deduped"),
+    eval_split_fraction: float = 0.1,
     max_seq_length: int = 256,
     seed: int = 42,
     mask_inputs: bool = True,  
@@ -33,20 +34,28 @@ def prepare(
     tokenizer = Tokenizer(checkpoint_dir)
     # tokenizer.processor.enable_truncation(max_seq_length, direction='left') #TODO: truncation probably should be at turn-level
 
-    train_set = get_conversation_text(destination_path / train_data_file)
+    data = get_conversation_text(destination_path / train_data_file)
+    train_set, eval_set = random_split(data,
+                                       [1 - eval_split_fraction, eval_split_fraction],
+                                       generator=torch.Generator().manual_seed(seed))
     test_set = get_conversation_text(destination_path / test_data_file)
-        
-    print(f"train has {len(train_set):,} samples")
-    print(f"val has {len(test_set):,} samples")
 
     print("Processing train split ...")
     train_set = [_ for sample in tqdm(train_set) for _ in prepare_sample(sample, tokenizer, max_seq_length, mask_inputs)]
     torch.save(train_set, destination_path / "train.pt")
 
+    print("Processing eval split ...")
+    eval_set = [_ for sample in tqdm(eval_set) for _ in prepare_sample(sample, tokenizer, max_seq_length, mask_inputs)]
+    torch.save(eval_set, destination_path / "eval.pt")
+
     print("Processing test split ...")
     test_set = [_ for sample in tqdm(test_set) for _ in prepare_sample(sample, tokenizer, max_seq_length, mask_inputs) ]
     torch.save(test_set, destination_path / "test.pt")
-    
+
+    print(f"train has {len(train_set):,} samples")
+    print(f"eval has {len(eval_set):,} samples")
+    print(f"test has {len(test_set):,} samples")
+
 def prepare_sample(example: list[tuple], tokenizer: Tokenizer, max_length: int, mask_inputs: bool = True, num_turns: int = 1, symmetrical: bool = False):
     """Processes a single sample.
 

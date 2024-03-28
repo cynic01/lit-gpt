@@ -29,6 +29,19 @@ def combine(
     print("Total length of train data", len(first_train))
     torch.save(first_train, destination_path / "train.pt")
 
+    print("Processing eval split ...")
+
+    first_eval = torch.load(first_dataset / "eval.pt")
+    print("Length of 1st eval data", len(first_eval))
+
+    second_eval = torch.load(second_dataset / "eval.pt")
+    print("Length of 2nd eval data", len(second_eval))
+
+    first_eval.extend(second_eval)
+    random.shuffle(first_eval)
+    print("Total length of eval data", len(first_eval))
+    torch.save(first_eval, destination_path / "eval.pt")
+
     print("Processing test split ...")
     
     first_test = torch.load(first_dataset / "test.pt")

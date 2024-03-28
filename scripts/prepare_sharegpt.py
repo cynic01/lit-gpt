@@ -54,7 +54,7 @@ def prepare(
     df = df.dropna(how='all').fillna("").astype(str)
     print(f"Dataset has {len(df):,} entries before sampling")
 
-    df = df.sample(n=round(46965 / (1-test_split_fraction)), random_state=seed, axis=0)  # random sample to keep same train dataset size with oasst1 + dolly
+    df = df.sample(n=round(42142 / (1-eval_split_fraction-test_split_fraction)), random_state=seed, axis=0)  # random sample to keep same train dataset size with oasst1 + dolly
     print(f"Dataset has {len(df):,} entries after sampling")
     print(df.head(10))
     
