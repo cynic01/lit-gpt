@@ -46,7 +46,8 @@ def main(pickle: str):
                   '--model', "PKU-ONELab/Themis",
                   '--test_dir', THEMIS_TEMP_DIR,
                   '--output_dir', THEMIS_OUT_DIR,
-                  '--tensor_parallel_size', '1'])
+                  '--tensor_parallel_size', '1',
+                  '--max_num_seqs', '512'])
 
   subprocess.run(['rm', '-r', THEMIS_TEMP_DIR])
 
